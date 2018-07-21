@@ -1,4 +1,3 @@
-%% Clearing all variables except center of the device coordinates.
 clc
 clearvars -except axis_intercept device_dimension theta
 close all
@@ -35,7 +34,6 @@ else
     A=Num+1;
 end
 %%
-% i=start-fstart+1;
 i=A/2
 I  = img(:,:,i);
 figure(100);uiwait(msgbox('Adjust to get low_in and high_in values')); 
@@ -97,7 +95,7 @@ for i=start-fstart+1:Num
      centroidx_select_prev = centroidx_select(stat_num);
      centroidy_select_prev = centroidy_select(stat_num);
      area_select_prev = area_select(stat_num);
-%      pixel_select_prev = 
+
      
       
  stats_final(i) = stats(stat_num);
@@ -125,16 +123,10 @@ I = img(:,:,i);
 figure(100);imshow(I)
 hold on;
 plot(centroidx,centroidy,'r*')
-%% Defining constant strain rate radius
 num = length(centroidx);
 resoln = 1.75; % pixel resolution
 strain_radius = 200/resoln; %% in microns
-%% Device center determination
-I = imref;
-if drop_num==1
-[axis_intercept,device_dimension,theta] = device_center (I)
-end
-%% Choosing trajectory points only within constant strain rate region
+
 checks = sqrt((centroidx-axis_intercept(1)).^2+(centroidy-axis_intercept(2)).^2);
 ind = (checks<strain_radius);
 new_centroidx = centroidx(ind);
@@ -145,7 +137,7 @@ new_area = area(ind);
 new_orientation = Orientation(ind);
 figure(100);hold on;plot(centroidx,centroidy,'r*');
 plot(new_centroidx,new_centroidy,'bo','MarkerFaceColor','b')
-%% Straight line fit to the horizontal portion of the trajectory 
+%% Straight line fit to the horizontal portion of the ellipse movement
 new_num = length(new_centroidx);
 xtry = new_centroidx(1:floor(new_num/10)); % only first 10% of data points
 ytry = new_centroidy(1:floor(new_num/10));
@@ -174,11 +166,7 @@ y_checkext = p1_exit.*x_check+p2_exit;
 figure(101);hold off;imshow(imref);
 hold on;plot(new_centroidx,new_centroidy,'bo','MarkerFaceColor','b')
 plot(x_check,y_checkent,x_check,y_checkext)
-%% Finding intersection of the two lines and plotting it
-x0 = axis_intercept; %% Device center from 8 point click as initial guess
-xcenter = fsolve(@intersection_func,x0,[],p1_entry,p2_entry,p1_exit,p2_exit);  % xcenter is a 2 element vector that has (x,y) of intersection point
-figure(101);hold on;plot(xcenter(1),xcenter(2),'d','MarkerFaceColor',[1 1 1]);
-%%  Finding shortest distance from intersection point to the trajectory so as to bifurcate approach and departure 
+
 distances = sqrt((xcenter(1)-new_centroidx).^2+(xcenter(2)-new_centroidy).^2);
 ind_short = find(distances==min(distances));
 xshort = new_centroidx(ind_short);
@@ -194,7 +182,7 @@ yshort_rot = xshort.*sin(theta1)+yshort.*cos(theta1);
 xcenter_rot_approach = xcenter(1).*cos(theta1)-xcenter(2).*sin(theta1); % Rotating the intersectio pointg
 ycenter_rot_approach = xcenter(1).*sin(theta1)+xcenter(2).*cos(theta1);
 figure(101);plot(centroidx_rotate,centroidy_rotate,xshort_rot,yshort_rot,'r*',xcenter_rot_approach,ycenter_rot_approach,'d','MarkerFaceColor','k')
-%%  Selecting the approach trajectory
+%%  line1
 ind_approach = 1:(ind_short-1);  % Changed
 x_approach = centroidx_rotate(ind_approach);
 y_approach = centroidy_rotate(ind_approach);
@@ -203,7 +191,7 @@ minor_approach = new_minor_axis(ind_approach);
 area_approach = new_area(ind_approach);
 orientation_approach = new_orientation(ind_approach);
 figure(101);hold on;plot(x_approach,y_approach,'co')
-%% Exponetial data prep for horizontal/approach trajectory
+%% Exponetial data prep for line1
 time_approach = (0:length(x_approach)-1)./v.FrameRate; % time series in seconds
 x_exp =abs(x_approach-xcenter_rot_approach);  % position series wrt the intersection point
 figure();plot(time_approach,x_exp)
@@ -217,13 +205,13 @@ opts.Display = 'Off';
 % Plot fit with data.
 figure( 'Name', 'untitled fit 1' );
 h = plot( fitresult_approach, xData, yData );
-legend( h, 'x_exp vs. time', 'untitled fit 1', 'Location', 'NorthEast' );
+legend( h, 'x vs. time', 'untitled fit 1', 'Location', 'NorthEast' );
 % Label axes
 xlabel time
 ylabel x_exp
 title(['Rsquare = ' num2str(gof_approach.rsquare) ',    Entering Strain rate,G: ' num2str(fitresult_approach.b)])
 grid on
-%%  Rotation for departure
+%%  Rotation for line2
 theta2 = atan(p1_exit);
 theta2 = theta2*-1;  % Changed
 centroidx_rotate_exit = new_centroidx.*cos(theta2)-new_centroidy.*sin(theta2);
@@ -234,7 +222,7 @@ xcenter_rot_exit = xcenter(1).*cos(theta2)-xcenter(2).*sin(theta2);
 ycenter_rot_exit = xcenter(1).*sin(theta2)+xcenter(2).*cos(theta2);
 figure(102); imshow(imref); hold on;plot(new_centroidx,new_centroidy,'r');
 plot(centroidx_rotate_exit,centroidy_rotate_exit,'b',xshort_rot_exit,yshort_rot_exit,'r*')
-%% Selecting the deprature trajectory
+%% Selecting the line2
 % ind_exit = (centroidy_rotate>yshort_rot);
 ind_exit = (ind_short):length(centroidx_rotate_exit); % Changed
 x_exit = centroidx_rotate_exit(ind_exit);
@@ -258,7 +246,7 @@ opts.Display = 'Off';
 % Plot fit with data.
 figure( 'Name', 'untitled fit 1' );
 h = plot( fitresult_exit, xData, yData );
-legend( h, 'y_exp vs. time', 'untitled fit 1', 'Location', 'NorthEast' );
+legend( h, 'y vs. time', 'untitled fit 1', 'Location', 'NorthEast' );
 % Label axes
 xlabel time
 ylabel y_exp
@@ -290,12 +278,6 @@ grid on
 
 clear I Ibw2 img imref 
 save('data')
-% % % % % xlswrite('data',{'Ellipse Orientation at shortest distance to device center'},drop_num,'R16')
- % % % % % xlswrite('data',new_orientation(ind_short),drop_num,'S16');
- % % % % % 
- % % % % % xlswrite('data',{'Device Orientation'},drop_num,'R17')
- % % % % % xlswrite('data',90-theta*180/pi,drop_num,'S17');
-%%
 clear I Ibw2 img imref 
 save(['data' num2str(drop_num)])
 
