@@ -5,16 +5,17 @@ close all
 %% Get avi video file to be processed for image analysis.
 filename = uigetfile;
 %% Inserting parameters to be read during image analysis. 
-prompt = {'Start Frame: ','Stop Frame: ','Drop #: ','Start Analysis at: '};
+prompt = {'Start Frame: ','Stop Frame: ','Number: ','Start Analysis at: '};
 dlg_title = 'Input';
 num_lines=1;
 answer = inputdlg(prompt, dlg_title,num_lines);
 %% A dialog box is created with above mentioned commands and input to this box is accepted using the commands below.
-start_frame= str2num(answer{1}); % The frame when the drop is about to enter the main channel. This frame is used as a reference frame for drop detection using image subtraction. 
-stop_frame = str2num(answer{2});% The frame right before drop starts disappearing from the main channel. This is mainly to limit the number of frames processed.
-drop_num = str2num(answer{3});% Drop number is used to make sure that center of device coordinates are consistent throughout the video file. The coordinates are calculated only for first drop since the device is not moving in the videos, this data can be recycled for the rest of the drops in the video to reduce run time of the code.
+start_frame= str2num(answer{1}); %  This frame is used as a reference frame for ellipse detection using image subtraction. 
+stop_frame = str2num(answer{2});% This is mainly to limit the number of frames processed.
+drop_num = str2num(answer{3});% Ellipse number is used to make sure that center of device coordinates are consistent throughout the video 
+%file. The coordinates are calculated only for first.
 start_at = str2num(answer{4});
-%% The user input of the frame numbers of drop entry and exit are required from the above commands to tell the code the number of frames that are to be read for each drop.
+%% The user input of the frame numbers are required from the above commands to tell the code the number of frames that are to be read. 
 %% Reading avi file
 v = VideoReader(filename); %% Reading avi video file
 start = start_at; % starting analysis from this frame
@@ -47,8 +48,8 @@ highin = 64;
 Imref = img(:,:,1); % reference image
 imref = imadjust(Imref,[lowin highin]/255);
 figure();imshow(imref)
-%% User input on first frame drop centroid
-uiwait(msgbox('Click on the approximate centroid of the drop in the background subtracted image'));
+%% User input on first frame ellipse centroid
+uiwait(msgbox('Click on the approximate centroid of the ellipse in the background subtracted image'));
 i = start-fstart+1;
 I = img(:,:,i)-imref; 
 figure(100);imshow(I);
@@ -60,7 +61,8 @@ for i=start-fstart+1:Num
  K = img(:,:,i);
  Kadj(:,:,i) = imadjust(K,[lowin highin]/255);
 end
-%% Image processing and drop center detection
+%% Image processing and ellipse
+center detection
 stat_num = 1;
 for i=start-fstart+1:Num
     i
@@ -82,7 +84,7 @@ for i=start-fstart+1:Num
      area_select = cell2mat(cell_data(1,:));
           
      
-     if i>start-fstart+1 % Assuming that regionprops managed to only detect the drop
+     if i>start-fstart+1 % Assuming that regionprops managed to only detect the ellipse
       distance_diff = sqrt((centroidx_select_prev-centroidx_select).^2+ (centroidy_select_prev-centroidy_select).^2);
       area_diff  = abs(area_select_prev-area_select);
       Error = sqrt(distance_diff.^2+area_diff.^2);
@@ -288,7 +290,7 @@ grid on
 
 clear I Ibw2 img imref 
 save('data')
-% % % % % xlswrite('data',{'Drop Orientation at shortest distance to device center'},drop_num,'R16')
+% % % % % xlswrite('data',{'Ellipse Orientation at shortest distance to device center'},drop_num,'R16')
  % % % % % xlswrite('data',new_orientation(ind_short),drop_num,'S16');
  % % % % % 
  % % % % % xlswrite('data',{'Device Orientation'},drop_num,'R17')
